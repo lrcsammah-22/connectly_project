@@ -1,16 +1,31 @@
 from django.urls import path
-from . import views
+from .views import FeedView
+from .views import (
+    UserListCreate,
+    PostListCreate,
+    PostDetailView,
+    LikePostView,
+    CommentPostView,
+    LoginView,
+    ProtectedView,
+    FeedView,
+)
 
 urlpatterns = [
-    # User routes
-    path('users/', views.get_users, name='get_users'),
-    path('users/create/', views.create_user, name='create_user'),
-    path('users/update/<int:user_id>/', views.update_user, name='update_user'),
-    path('users/delete/<int:user_id>/', views.delete_user, name='delete_user'),
+  # Users
+    path('users/', UserListCreate.as_view(), name='user-list-create'),
+    path('users/create/', UserListCreate.as_view(), name='user-create'),
 
-    # Post routes
-    path('posts/', views.get_posts, name='get_posts'),
-    path('posts/create/', views.create_post, name='create_post'),
-    path('posts/update/<int:post_id>/', views.update_post, name='update_post'),
-    path('posts/delete/<int:post_id>/', views.delete_post, name='delete_post'),
+    # Posts
+    path('', PostListCreate.as_view(), name='post-list-create'),  # /posts/
+    path('<int:pk>/', PostDetailView.as_view(), name='post-detail'),
+    path('<int:pk>/like/', LikePostView.as_view(), name='post-like'),
+    path('<int:pk>/comment/', CommentPostView.as_view(), name='post-comment'),
+
+    # Feed (✅ FIXED)
+    path('feed/', FeedView.as_view(), name='feed'),
+
+    # Auth / Protected
+    path('login/', LoginView.as_view(), name='login'),
+    path('protected/', ProtectedView.as_view(), name='protected'),
 ]
