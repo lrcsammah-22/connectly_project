@@ -21,6 +21,7 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ['id', 'content', 'author', 'created_at', 
+                  'privacy',  # 👈 ADD THIS
                   'comments', 'like_count', 'comment_count']
 
     def get_like_count(self, obj):
@@ -28,7 +29,6 @@ class PostSerializer(serializers.ModelSerializer):
 
     def get_comment_count(self, obj):
         return obj.comments.count()
-
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.PrimaryKeyRelatedField(read_only=True)

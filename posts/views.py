@@ -1,17 +1,81 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.generics import ListAPIView  # ✅ FIX: missing import
+
 from .models import Post, Comment, Like
 from django.contrib.auth.models import User
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
+
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsPostAuthor
+
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse  # ✅ FIX: moved import here
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
+from .permissions import IsAdminUserCustom
+
+from django.core.cache import cache
+
+class FeedView(ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+
+    def get_queryset(self):
+        return Post.objects.all().order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        page = request.query_params.get('page', 1)
+        cache_key = f'feed_page_{page}'
+
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            print("✅ CACHE HIT")
+            return Response(cached_data)
+
+        print("❌ CACHE MISS (DB HIT)")
+
+        response = super().list(request, *args, **kwargs)
+
+        # Cache full paginated response (includes next/previous/results)
+        cache.set(cache_key, response.data, timeout=60)
+
+        return response
+
+# ---------- FEED ---------- #
+class FeedView(ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+
+    def get_queryset(self):
+        return Post.objects.all().order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        page = request.query_params.get('page', 1)
+        cache_key = f'feed_page_{page}'
+
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            print("✅ CACHE HIT")
+            return Response(cached_data)
+
+        print("❌ CACHE MISS (DB HIT)")
+        response = super().list(request, *args, **kwargs)
+
+        cache.set(cache_key, response.data, timeout=60)
+
+        return response
+    
 # ---------- POSTS ---------- #
 class PostDetailView(APIView):
     authentication_classes = [TokenAuthentication]
@@ -55,7 +119,7 @@ class PostListCreate(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        posts = Post.objects.all()
+        posts = Post.objects.all().order_by('-created_at')  # ✅ better sorting
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data)
 
@@ -94,8 +158,8 @@ class CommentPostView(APIView):
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(author=request.user, post=post)
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ---------- LIKES ---------- #
@@ -127,11 +191,13 @@ class UserListCreate(APIView):
 
 
 # ---------- LOGIN ---------- #
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
         user = authenticate(username=username, password=password)
+
         if user is not None:
             token, created = Token.objects.get_or_create(user=user)
             return Response({
@@ -139,8 +205,9 @@ class LoginView(APIView):
                 "user_id": user.pk,
                 "email": user.email,
                 "message": "Login successful!"
-            }, status=status.HTTP_200_OK)
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            })
+
+        return Response({"error": "Invalid credentials"}, status=401)
 
 
 # ---------- PROTECTED ---------- #
@@ -150,3 +217,8 @@ class ProtectedView(APIView):
 
     def get(self, request):
         return Response({"message": "Authenticated!"})
+
+
+# ---------- HOME ---------- #
+def home(request):
+    return HttpResponse("Welcome to Connectly API!")

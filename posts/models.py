@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.conf import settings
 
-
 class Post(models.Model):
     content = models.TextField()
     author = models.ForeignKey(User, related_name='posts', on_delete=models.CASCADE)
@@ -10,6 +9,11 @@ class Post(models.Model):
 
     def __str__(self):
         return f"Post by {self.author.username} at {self.created_at}"
+    privacy = models.CharField(
+    max_length=10,
+    choices=[('public', 'Public'), ('private', 'Private')],
+    default='public'
+)
 
 
 class Comment(models.Model):
@@ -20,7 +24,7 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.author.username} on Post {self.post.id}"
-
+    
 
 class Like(models.Model):
     user = models.ForeignKey(
@@ -40,3 +44,11 @@ class Like(models.Model):
 
     def __str__(self):
         return f"{self.user.username} liked Post {self.post.id}"
+    
+    privacy = models.CharField(
+   max_length=10,
+   choices=[('public', 'Public'), ('private', 'Private')],
+   default='public'
+)
+
+    

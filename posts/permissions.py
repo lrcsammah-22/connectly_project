@@ -6,3 +6,10 @@ class IsPostAuthor(BasePermission):
         is_admin = request.user.groups.filter(name='Admin').exists()
     
         return is_author or is_admin
+    
+class IsAdminUserCustom(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated and
+            request.user.groups.filter(name='admin').exists()
+        )
